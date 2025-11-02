@@ -2,23 +2,15 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Menu, X, LogIn, LogOut, LayoutDashboard, Crown } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import AuthModal from './AuthModal'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/')
-  }
-
-  const openAuthModal = (mode: 'login' | 'signup') => {
-    setAuthMode(mode)
-    setShowAuthModal(true)
   }
 
   return (
@@ -67,19 +59,19 @@ export default function Navigation() {
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => openAuthModal('login')}
+                  <Link
+                    to="/login"
                     className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     <LogIn size={18} />
                     Sign In
-                  </button>
-                  <button
-                    onClick={() => openAuthModal('signup')}
+                  </Link>
+                  <Link
+                    to="/signup"
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
                   >
                     Get Started
-                  </button>
+                  </Link>
                 </>
               )}
             </div>
@@ -148,25 +140,21 @@ export default function Navigation() {
                   </>
                 ) : (
                   <>
-                    <button
-                      onClick={() => {
-                        openAuthModal('login')
-                        setIsOpen(false)
-                      }}
-                      className="text-gray-600 hover:text-gray-900 flex items-center gap-2 text-left"
+                    <Link
+                      to="/login"
+                      className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+                      onClick={() => setIsOpen(false)}
                     >
                       <LogIn size={18} />
                       Sign In
-                    </button>
-                    <button
-                      onClick={() => {
-                        openAuthModal('signup')
-                        setIsOpen(false)
-                      }}
+                    </Link>
+                    <Link
+                      to="/signup"
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-center"
+                      onClick={() => setIsOpen(false)}
                     >
                       Get Started
-                    </button>
+                    </Link>
                   </>
                 )}
               </div>
@@ -174,12 +162,6 @@ export default function Navigation() {
           )}
         </div>
       </nav>
-
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)}
-        defaultMode={authMode}
-      />
     </>
   )
 }

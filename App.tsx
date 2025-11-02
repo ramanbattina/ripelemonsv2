@@ -11,6 +11,8 @@ import AdminPayments from './pages/admin/AdminPayments'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import UserDashboard from './pages/UserDashboard'
 import AuthCallback from './pages/AuthCallback'
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
 import AdminRoute from './components/AdminRoute'
 import './App.css'
 
@@ -25,6 +27,8 @@ function App() {
           <Route path="/submit" element={<SubmitProductPage />} />
           <Route path="/success" element={<PaymentSuccessPage />} />
           <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />

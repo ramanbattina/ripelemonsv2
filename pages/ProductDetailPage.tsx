@@ -4,7 +4,6 @@ import { supabase, ProductWithDetails } from '../lib/supabase'
 import Navigation from '../components/Navigation'
 import { DollarSign, TrendingUp, ExternalLink, Award, User, Calendar, ArrowLeft, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import AuthModal from '../components/AuthModal'
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -13,7 +12,6 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<ProductWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [viewLimitReached, setViewLimitReached] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -425,12 +423,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
-
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)}
-        defaultMode="signup"
-      />
     </>
   )
 }
