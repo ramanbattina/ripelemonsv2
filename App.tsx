@@ -10,6 +10,7 @@ import AdminSubmissions from './pages/admin/AdminSubmissions'
 import AdminPayments from './pages/admin/AdminPayments'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import UserDashboard from './pages/UserDashboard'
+import AuthCallback from './pages/AuthCallback'
 import AdminRoute from './components/AdminRoute'
 import './App.css'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/submit" element={<SubmitProductPage />} />
           <Route path="/success" element={<PaymentSuccessPage />} />
           <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/founders" element={<AdminRoute><AdminFounders /></AdminRoute>} />

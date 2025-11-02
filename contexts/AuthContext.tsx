@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { User } from '@supabase/supabase-js'
+import { getRedirectUrl } from '../lib/config'
 
 interface UserProfile {
   id: string
@@ -107,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getRedirectUrl('/auth/callback'),
         data: {
           full_name: fullName
         }
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function resetPassword(email: string) {
     return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: getRedirectUrl('/reset-password')
     })
   }
 
