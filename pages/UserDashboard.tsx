@@ -18,14 +18,16 @@ interface Subscription {
 }
 
 export default function UserDashboard() {
-  const { user, profile, updateProfile, refreshProfile } = useAuth()
+  const { user, profile, updateProfile, refreshProfile, loading: authLoading } = useAuth()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    loadData()
-  }, [user])
+    if (!authLoading) {
+      loadData()
+    }
+  }, [user, profile, authLoading])
 
   const loadData = async () => {
     if (!user) return
@@ -86,7 +88,7 @@ export default function UserDashboard() {
     return Math.max(0, profile.monthly_view_limit - profile.monthly_view_count)
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -97,7 +99,7 @@ export default function UserDashboard() {
     )
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -106,9 +108,31 @@ export default function UserDashboard() {
             <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Not Authenticated</h2>
             <p className="text-gray-600 mb-4">Please sign in to access your dashboard</p>
-            <Link to="/" className="text-green-600 hover:text-green-700 font-semibold">
-              Go to Home
+            <Link to="/login" className="text-green-600 hover:text-green-700 font-semibold">
+              Sign In
             </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // If user exists but profile doesn't, try to refresh it
+  useEffect(() => {
+    if (user && !profile && !authLoading) {
+      refreshProfile()
+    }
+  }, [user, profile, authLoading, refreshProfile])
+
+  if (!profile && user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Setting up your profile...</h2>
+            <p className="text-gray-600 mb-4">Please wait while we load your account information</p>
           </div>
         </div>
       </div>

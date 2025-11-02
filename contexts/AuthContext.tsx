@@ -89,9 +89,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
 
       if (error) throw error
-      setProfile(data)
+      
+      // If profile doesn't exist, create one
+      if (!data) {
+        // Get user email from auth
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: newProfile, error: createError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: userId,
+              email: user.email || '',
+              full_name: null,
+              subscription_status: 'free',
+              monthly_view_count: 0,
+              monthly_view_limit: 10,
+              is_admin: false
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('Error creating profile:', createError)
+            setProfile(null)
+          } else {
+            setProfile(newProfile)
+          }
+        } else {
+          setProfile(null)
+        }
+      } else {
+        setProfile(data)
+      }
     } catch (error) {
       console.error('Error fetching profile:', error)
+      setProfile(null)
     }
   }
 
@@ -99,6 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await supabase.auth.signInWithPassword({ email, password })
     if (result.data.user) {
       await fetchProfile(result.data.user.id)
+      // Force a refresh to ensure state updates
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
     }
     return result
   }
