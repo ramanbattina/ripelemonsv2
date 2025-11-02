@@ -115,9 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
+    if (result.error) {
+      console.error('Signup error:', result.error)
+      return result
+    }
+
     if (result.data.user) {
       // Create user profile
-      await supabase.from('user_profiles').insert({
+      const profileResult = await supabase.from('user_profiles').insert({
         id: result.data.user.id,
         email: result.data.user.email,
         full_name: fullName || null,
@@ -125,8 +130,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         monthly_view_count: 0,
         monthly_view_limit: 10
       })
+
+      if (profileResult.error) {
+        console.error('Profile creation error:', profileResult.error)
+      }
       
       await fetchProfile(result.data.user.id)
+    }
+
+    // Check if email was sent
+    // Note: Supabase always sends email if confirmations are enabled
+    // If user.email_confirmed_at is null, email confirmation is required
+    if (result.data.user && !result.data.user.email_confirmed_at) {
+      console.log('Email confirmation required - email should be sent')
     }
 
     return result
