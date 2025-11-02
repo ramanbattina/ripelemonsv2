@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -24,10 +25,31 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await signIn(email, password)
         if (error) throw error
-        setMessage('Successfully logged in!')
-        setTimeout(() => {
-          navigate('/dashboard')
-        }, 1000)
+        
+        // Check if user is admin
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('is_admin')
+            .eq('id', user.id)
+            .maybeSingle()
+          
+          setMessage('Successfully logged in!')
+          setTimeout(() => {
+            // Redirect to admin dashboard if user is admin, otherwise user dashboard
+            if (profile?.is_admin === true) {
+              navigate('/admin')
+            } else {
+              navigate('/dashboard')
+            }
+          }, 1000)
+        } else {
+          setMessage('Successfully logged in!')
+          setTimeout(() => {
+            navigate('/dashboard')
+          }, 1000)
+        }
       } else {
         const { error } = await resetPassword(email)
         if (error) throw error

@@ -39,12 +39,23 @@ export default function AuthCallback() {
             // Refresh profile to ensure we have the latest data
             await refreshProfile()
             
+            // Check if user is admin
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('is_admin')
+              .eq('id', data.user.id)
+              .maybeSingle()
+            
             setStatus('success')
             setMessage('Email verified! Redirecting...')
             
-            // Redirect to dashboard or home
+            // Redirect to admin dashboard if user is admin, otherwise user dashboard
             setTimeout(() => {
-              navigate('/dashboard')
+              if (profile?.is_admin === true) {
+                navigate('/admin')
+              } else {
+                navigate('/dashboard')
+              }
             }, 2000)
           } else {
             throw new Error('No user data received')
@@ -53,9 +64,22 @@ export default function AuthCallback() {
           // No tokens in URL, check if user is already authenticated
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
+            // Check if user is admin
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('is_admin')
+              .eq('id', user.id)
+              .maybeSingle()
+            
             setStatus('success')
             setMessage('Already authenticated! Redirecting...')
-            setTimeout(() => navigate('/dashboard'), 1500)
+            setTimeout(() => {
+              if (profile?.is_admin === true) {
+                navigate('/admin')
+              } else {
+                navigate('/dashboard')
+              }
+            }, 1500)
           } else {
             throw new Error('No authentication tokens found')
           }
