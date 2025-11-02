@@ -16,23 +16,18 @@ When users sign up, Supabase sends confirmation emails with redirect URLs that u
    - Or go to **Settings** → **Auth** → **URL Configuration**
 
 3. **Add Site URL**
-   - **Site URL**: `https://ripelemonsv2f.vercel.app`
-   - This is your production URL
+   - **Site URL**: `https://ripelemons.com` (or `https://ripelemonsv2f.vercel.app`)
+   - This is your production URL - use your custom domain if available
 
 4. **Add Redirect URLs**
-   Add these URLs to the **Redirect URLs** list:
+   Add these URLs to the **Redirect URLs** list (add both custom domain and Vercel URL):
    ```
+   https://ripelemons.com/auth/callback
+   https://ripelemons.com/reset-password
+   https://ripelemons.com/dashboard
    https://ripelemonsv2f.vercel.app/auth/callback
    https://ripelemonsv2f.vercel.app/reset-password
    https://ripelemonsv2f.vercel.app/dashboard
-   ```
-
-5. **Add Additional Redirect URLs (Optional)**
-   If you have a custom domain, also add:
-   ```
-   https://yourdomain.com/auth/callback
-   https://yourdomain.com/reset-password
-   https://yourdomain.com/dashboard
    ```
 
 ### Step 2: Configure Email Templates (Optional but Recommended)
@@ -51,23 +46,23 @@ When users sign up, Supabase sends confirmation emails with redirect URLs that u
 
 The code already uses environment variables. If you need to override for production, you can add these to Vercel:
 
-- `VITE_EMAIL_REDIRECT_URL`: `https://ripelemonsv2f.vercel.app`
-- `VITE_PUBLIC_URL`: `https://ripelemonsv2f.vercel.app`
+- `VITE_EMAIL_REDIRECT_URL`: `https://ripelemons.com` (or your custom domain)
+- `VITE_PUBLIC_URL`: `https://ripelemons.com` (or your custom domain)
 
-But this is optional - the code defaults to the production URL.
+But this is optional - the code defaults to `https://ripelemons.com` for email redirects.
 
 ## Testing
 
 1. **Test Email Confirmation**
    - Sign up with a new email
    - Check your email for the confirmation link
-   - The link should point to `https://ripelemonsv2f.vercel.app/auth/callback#...`
+   - The link should point to `https://ripelemons.com/auth/callback#...` (or your custom domain)
    - Click the link and verify it redirects correctly
 
 2. **Test Password Reset**
    - Request a password reset
    - Check your email for the reset link
-   - The link should point to `https://ripelemonsv2f.vercel.app/reset-password#...`
+   - The link should point to `https://ripelemons.com/reset-password#...` (or your custom domain)
    - Click the link and verify it redirects correctly
 
 ## Important Notes
