@@ -139,6 +139,11 @@ export default function UserDashboard() {
     )
   }
 
+  // TypeScript guard - profile must exist here
+  if (!profile) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
