@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import { Plus, Edit, Trash2, ArrowLeft, Save, X } from 'lucide-react'
+import { supabase, RevenueData } from '../../lib/supabase'
+import { Plus, Edit, Trash2, ArrowLeft, Save, X, DollarSign } from 'lucide-react'
 
 interface Product {
   id: number
@@ -13,12 +13,17 @@ interface Product {
   date_added: string
 }
 
+interface ProductWithRevenue extends Product {
+  revenue?: RevenueData | null
+}
+
 export default function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithRevenue[]>([])
   const [founders, setFounders] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingRevenueId, setEditingRevenueId] = useState<number | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -26,6 +31,12 @@ export default function AdminProducts() {
     founder_id: '',
     description: '',
     category_id: ''
+  })
+  const [revenueFormData, setRevenueFormData] = useState({
+    mrr: '',
+    arr: '',
+    source_url: '',
+    verification_tier_id: 1
   })
 
   useEffect(() => {
@@ -40,11 +51,44 @@ export default function AdminProducts() {
         supabase.from('categories').select('*')
       ])
 
-      if (productsRes.data) setProducts(productsRes.data)
+      if (productsRes.error) throw productsRes.error
+      if (foundersRes.error) throw foundersRes.error
+      if (categoriesRes.error) throw categoriesRes.error
+
+      const productsData = productsRes.data || []
+      const productIds = productsData.map(p => p.id)
+
+      // Fetch revenue data for all products
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('revenue_data')
+        .select('*')
+        .in('product_id', productIds)
+
+      if (revenueError) throw revenueError
+
+      // Group revenue data by product_id and get the latest
+      const revenueByProduct: Record<number, RevenueData> = {}
+      if (revenueData) {
+        revenueData.forEach((rev: RevenueData) => {
+          if (!revenueByProduct[rev.product_id] || 
+              new Date(rev.date_reported) > new Date(revenueByProduct[rev.product_id].date_reported)) {
+            revenueByProduct[rev.product_id] = rev
+          }
+        })
+      }
+
+      // Combine products with their revenue data
+      const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => ({
+        ...product,
+        revenue: revenueByProduct[product.id] || null
+      }))
+
+      setProducts(productsWithRevenue)
       if (foundersRes.data) setFounders(foundersRes.data)
       if (categoriesRes.data) setCategories(categoriesRes.data)
     } catch (error) {
       console.error('Error fetching data:', error)
+      alert('Failed to fetch data')
     } finally {
       setLoading(false)
     }
@@ -117,6 +161,62 @@ export default function AdminProducts() {
 
   function updateProduct(id: number, field: string, value: any) {
     setProducts(products.map(p => p.id === id ? { ...p, [field]: value } : p))
+  }
+
+  async function handleRevenueUpdate(productId: number) {
+    try {
+      const product = products.find(p => p.id === productId)
+      if (!product) return
+
+      const mrr = revenueFormData.mrr ? parseFloat(revenueFormData.mrr) : null
+      const arr = revenueFormData.arr ? parseFloat(revenueFormData.arr) : null
+
+      if (!product.revenue) {
+        // Create new revenue data
+        const { error } = await supabase.from('revenue_data').insert({
+          product_id: productId,
+          mrr: mrr,
+          arr: arr,
+          date_reported: new Date().toISOString(),
+          verification_tier_id: revenueFormData.verification_tier_id,
+          source_url: revenueFormData.source_url || null
+        })
+
+        if (error) throw error
+      } else {
+        // Update existing revenue data
+        const { error } = await supabase
+          .from('revenue_data')
+          .update({
+            mrr: mrr,
+            arr: arr,
+            date_reported: new Date().toISOString(),
+            verification_tier_id: revenueFormData.verification_tier_id,
+            source_url: revenueFormData.source_url || null
+          })
+          .eq('id', product.revenue.id)
+
+        if (error) throw error
+      }
+
+      setEditingRevenueId(null)
+      setRevenueFormData({ mrr: '', arr: '', source_url: '', verification_tier_id: 1 })
+      fetchData()
+      alert('Revenue data updated successfully!')
+    } catch (error) {
+      console.error('Error updating revenue:', error)
+      alert('Failed to update revenue data')
+    }
+  }
+
+  function formatRevenue(amount: number | null): string {
+    if (!amount) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
   }
 
   if (loading) {
@@ -226,6 +326,8 @@ export default function AdminProducts() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Founder</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">MRR</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ARR</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -252,6 +354,36 @@ export default function AdminProducts() {
                       {categories.find(c => c.id === product.category_id)?.name || 'Unknown'}
                     </td>
                     <td className="px-4 py-3 text-sm">
+                      {editingRevenueId === product.id ? (
+                        <input
+                          type="number"
+                          placeholder="MRR"
+                          value={revenueFormData.mrr}
+                          onChange={(e) => setRevenueFormData({ ...revenueFormData, mrr: e.target.value })}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm w-24"
+                        />
+                      ) : (
+                        <span className="text-gray-900 font-medium">
+                          {formatRevenue(product.revenue?.mrr || null)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {editingRevenueId === product.id ? (
+                        <input
+                          type="number"
+                          placeholder="ARR"
+                          value={revenueFormData.arr}
+                          onChange={(e) => setRevenueFormData({ ...revenueFormData, arr: e.target.value })}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm w-24"
+                        />
+                      ) : (
+                        <span className="text-gray-900 font-medium">
+                          {formatRevenue(product.revenue?.arr || null)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
                       {product.url && (
                         <a href={product.url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700">
                           Visit
@@ -276,12 +408,47 @@ export default function AdminProducts() {
                             <X size={18} />
                           </button>
                         </div>
+                      ) : editingRevenueId === product.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRevenueUpdate(product.id)}
+                            className="p-1 text-green-600 hover:text-green-700"
+                            title="Save Revenue"
+                          >
+                            <Save size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingRevenueId(null)
+                              setRevenueFormData({ mrr: '', arr: '', source_url: '', verification_tier_id: 1 })
+                            }}
+                            className="p-1 text-gray-600 hover:text-gray-700"
+                            title="Cancel"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => {
+                              setEditingRevenueId(product.id)
+                              setRevenueFormData({
+                                mrr: product.revenue?.mrr?.toString() || '',
+                                arr: product.revenue?.arr?.toString() || '',
+                                source_url: product.revenue?.source_url || '',
+                                verification_tier_id: product.revenue?.verification_tier_id || 1
+                              })
+                            }}
+                            className="p-1 text-purple-600 hover:text-purple-700"
+                            title="Edit Revenue (MRR/ARR)"
+                          >
+                            <DollarSign size={18} />
+                          </button>
+                          <button
                             onClick={() => setEditingId(product.id)}
                             className="p-1 text-blue-600 hover:text-blue-700"
-                            title="Edit"
+                            title="Edit Product"
                           >
                             <Edit size={18} />
                           </button>

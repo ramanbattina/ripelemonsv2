@@ -231,12 +231,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function checkViewLimit(): Promise<boolean> {
     if (!profile) return false
+    // Admin users have unlimited access
+    if (profile.is_admin === true) return true
     if (profile.subscription_status !== 'free') return true
     return profile.monthly_view_count < profile.monthly_view_limit
   }
 
   async function incrementViewCount() {
     if (!user || !profile) return
+    // Admin users don't need view count tracking
+    if (profile.is_admin === true) return
     if (profile.subscription_status !== 'free') return
 
     await supabase

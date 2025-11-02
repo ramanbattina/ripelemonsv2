@@ -21,6 +21,12 @@ export default function ProductDetailPage() {
 
   async function checkAndFetchProduct(productId: number) {
     try {
+      // Admin users bypass all view limits and payment walls
+      if (profile && profile.is_admin === true) {
+        await fetchProduct(productId)
+        return
+      }
+
       // Check view limit for free users
       if (profile && profile.subscription_status === 'free') {
         const canView = await checkViewLimit()
@@ -137,7 +143,8 @@ export default function ProductDetailPage() {
     return null
   }
 
-  const isPremiumUser = profile && profile.subscription_status !== 'free'
+  // Admin users have all premium features unlocked
+  const isPremiumUser = profile && (profile.subscription_status !== 'free' || profile.is_admin === true)
 
   if (loading) {
     return (
