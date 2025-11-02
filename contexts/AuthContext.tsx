@@ -95,25 +95,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Get user email from auth
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data: newProfile, error: createError } = await supabase
+          // Check if there's an existing profile with this user ID (just in case)
+          const { data: existingProfile } = await supabase
             .from('user_profiles')
-            .insert({
-              id: userId,
-              email: user.email || '',
-              full_name: null,
-              subscription_status: 'free',
-              monthly_view_count: 0,
-              monthly_view_limit: 10,
-              is_admin: false
-            })
-            .select()
-            .single()
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle()
 
-          if (createError) {
-            console.error('Error creating profile:', createError)
-            setProfile(null)
+          if (existingProfile) {
+            setProfile(existingProfile)
           } else {
-            setProfile(newProfile)
+            // Create new profile with default values
+            // Note: is_admin should be set manually via SQL if needed
+            const { data: newProfile, error: createError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: userId,
+                email: user.email || '',
+                full_name: null,
+                subscription_status: 'free',
+                monthly_view_count: 0,
+                monthly_view_limit: 10,
+                is_admin: false  // Default to false - must be set manually for admin users
+              })
+              .select()
+              .single()
+
+            if (createError) {
+              console.error('Error creating profile:', createError)
+              setProfile(null)
+            } else {
+              setProfile(newProfile)
+            }
           }
         } else {
           setProfile(null)
