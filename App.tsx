@@ -10,6 +10,7 @@ import AdminSubmissions from './pages/admin/AdminSubmissions'
 import AdminPayments from './pages/admin/AdminPayments'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import UserDashboard from './pages/UserDashboard'
+import AdminRoute from './components/AdminRoute'
 import './App.css'
 
 function App() {
@@ -23,11 +24,11 @@ function App() {
           <Route path="/submit" element={<SubmitProductPage />} />
           <Route path="/success" element={<PaymentSuccessPage />} />
           <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/products" element={<AdminProducts />} />
-          <Route path="/admin/founders" element={<AdminFounders />} />
-          <Route path="/admin/payments" element={<AdminPayments />} />
-          <Route path="/admin/submissions" element={<AdminSubmissions />} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+          <Route path="/admin/founders" element={<AdminRoute><AdminFounders /></AdminRoute>} />
+          <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
+          <Route path="/admin/submissions" element={<AdminRoute><AdminSubmissions /></AdminRoute>} />
         </Routes>
       </div>
     </Router>

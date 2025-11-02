@@ -12,6 +12,7 @@ interface UserProfile {
   monthly_view_count: number
   monthly_view_limit: number
   api_key: string | null
+  is_admin: boolean | null
   created_at: string
 }
 
