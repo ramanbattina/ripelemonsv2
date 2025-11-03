@@ -259,10 +259,33 @@ export default function AdminProducts() {
         console.log('Verification check:', {
           expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
           actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
-          raw: { is_featured: verifyData.is_featured, featured_order: verifyData.featured_order }
+          raw: { is_featured: verifyData.is_featured, featured_order: verifyData.featured_order },
+          types: {
+            expected_is_featured: typeof isFeaturedValue,
+            actual_is_featured: typeof verifyIsFeatured,
+            expected_featured_order: typeof featuredOrderValue,
+            actual_featured_order: typeof verifyFeaturedOrder
+          }
         })
         
-        if (verifyIsFeatured === isFeaturedValue && verifyFeaturedOrder === featuredOrderValue) {
+        // Use loose comparison for featured_order (handle null/undefined/0)
+        const featuredOrderMatch = (featuredOrderValue === null && verifyFeaturedOrder === null) || 
+                                   (featuredOrderValue !== null && verifyFeaturedOrder !== null && 
+                                    Number(featuredOrderValue) === Number(verifyFeaturedOrder))
+        
+        // Use strict boolean comparison for is_featured
+        const isFeaturedMatch = Boolean(verifyIsFeatured) === Boolean(isFeaturedValue)
+        
+        console.log('Comparison results:', {
+          is_featured_match: isFeaturedMatch,
+          featured_order_match: featuredOrderMatch,
+          verifyIsFeatured,
+          isFeaturedValue,
+          verifyFeaturedOrder,
+          featuredOrderValue
+        })
+        
+        if (isFeaturedMatch && featuredOrderMatch) {
           console.log('Update verified successfully')
           // Refresh data first, then close edit mode
           await fetchData()
@@ -272,7 +295,8 @@ export default function AdminProducts() {
         } else {
           console.error('Update verification failed - values do not match', {
             expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
-            actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder }
+            actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
+            matches: { is_featured: isFeaturedMatch, featured_order: featuredOrderMatch }
           })
           // Still refresh and close - the update might have worked, just verification is failing
           await fetchData()
