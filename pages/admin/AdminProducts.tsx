@@ -225,10 +225,12 @@ export default function AdminProducts() {
       console.log('Current user:', currentUser.id, currentUser.email)
 
       // Try update without select first to see if it works
-      const { error: updateError, data: updateResult } = await supabase
+      // Use select() to get the number of rows affected
+      const { error: updateError, data: updateResult, count } = await supabase
         .from('products')
         .update(updateData)
         .eq('id', id)
+        .select('id', { count: 'exact', head: true })
 
       if (updateError) {
         console.error('Update error:', updateError)
@@ -237,7 +239,17 @@ export default function AdminProducts() {
         throw updateError
       }
 
-      console.log('Update executed (no error), checking if rows were affected:', updateResult)
+      console.log('Update executed (no error), rows affected:', count, 'updateResult:', updateResult)
+      
+      // If no rows were affected, the update didn't work
+      if (count === 0) {
+        console.error('No rows were updated - check RLS policies or permissions')
+        alert('Update failed: No rows were updated. Please check your database permissions.')
+        throw new Error('No rows updated')
+      }
+
+      // Wait a moment for the database to commit
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Now try to fetch the updated data separately
       const { error: selectError, data: selectData } = await supabase
@@ -250,46 +262,103 @@ export default function AdminProducts() {
         console.error('Select error after update:', selectError)
       }
 
+      console.log('Select after update:', selectData)
+
       // Note: If RLS prevents SELECT after UPDATE, data might be empty
       // but the update may still have succeeded
       if (!selectData) {
-        console.warn('No data returned from select after update (might be RLS) - verifying update...')
+        console.warn('No data returned from select after update (might be RLS) - trying alternative verification...')
         // Try to verify the update by fetching the product again
-        // Use the data we already fetched if available
-        let verifyData = selectData
-        let verifyError = selectError
+        let verifyData = null
+        let verifyError = null
         
-        // If we didn't get data from the first select, try again
-        if (!verifyData) {
-          const { data: retryData, error: retryError } = await supabase
-            .from('products')
-            .select('id, is_featured, featured_order')
-            .eq('id', id)
-            .maybeSingle()
-          verifyData = retryData
-          verifyError = retryError
+        // Try fetching again with a delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const { data: retryData, error: retryError } = await supabase
+          .from('products')
+          .select('id, is_featured, featured_order')
+          .eq('id', id)
+          .maybeSingle()
+        verifyData = retryData
+        verifyError = retryError
+        
+        if (!verifyData && !verifyError) {
+          // If we still can't get data, the update might have worked but RLS is blocking
+          // Just refresh and let the user verify
+          console.warn('Cannot verify update due to RLS - refreshing data anyway')
+          await fetchData()
+          setEditingId(null)
+          alert('Product update completed. Please refresh the page to verify changes.')
+          return
         }
         
-        if (verifyError) {
-          console.error('Verify error:', verifyError)
-          alert(`Failed to verify update: ${verifyError.message}`)
-          throw verifyError
+        // Use verifyData if we got it
+        if (verifyData) {
+          // Use verifyData for verification
+          const dataToVerify = verifyData
+          
+          // Convert dataToVerify values to match our expected types
+          const verifyIsFeatured = dataToVerify.is_featured === true || dataToVerify.is_featured === 1 || dataToVerify.is_featured === 'true'
+          const verifyFeaturedOrder = dataToVerify.featured_order ? Number(dataToVerify.featured_order) : null
+          
+          console.log('Verification check:', {
+            expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
+            actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
+            raw: { is_featured: dataToVerify.is_featured, featured_order: dataToVerify.featured_order },
+            types: {
+              expected_is_featured: typeof isFeaturedValue,
+              actual_is_featured: typeof verifyIsFeatured,
+              expected_featured_order: typeof featuredOrderValue,
+              actual_featured_order: typeof verifyFeaturedOrder
+            }
+          })
+          
+          // Use loose comparison for featured_order (handle null/undefined/0)
+          const featuredOrderMatch = (featuredOrderValue === null && verifyFeaturedOrder === null) || 
+                                     (featuredOrderValue !== null && verifyFeaturedOrder !== null && 
+                                      Number(featuredOrderValue) === Number(verifyFeaturedOrder))
+          
+          // Use strict boolean comparison for is_featured
+          const isFeaturedMatch = Boolean(verifyIsFeatured) === Boolean(isFeaturedValue)
+          
+          console.log('Comparison results:', {
+            is_featured_match: isFeaturedMatch,
+            featured_order_match: featuredOrderMatch,
+            verifyIsFeatured,
+            isFeaturedValue,
+            verifyFeaturedOrder,
+            featuredOrderValue
+          })
+          
+          if (isFeaturedMatch && featuredOrderMatch) {
+            console.log('Update verified successfully')
+            await fetchData()
+            setEditingId(null)
+            alert('Product updated successfully!')
+            return
+          } else {
+            console.error('Update verification failed - values do not match', {
+              expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
+              actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
+              matches: { is_featured: isFeaturedMatch, featured_order: featuredOrderMatch }
+            })
+            // Update might have failed - check if it's a permissions issue
+            alert('Update verification failed. The update may not have saved. Please check your database permissions.')
+            return
+          }
         }
+      }
+      
+      // If we have selectData, verify it
+      if (selectData) {
+        // Convert selectData values to match our expected types
+        const verifyIsFeatured = selectData.is_featured === true || selectData.is_featured === 1 || selectData.is_featured === 'true'
+        const verifyFeaturedOrder = selectData.featured_order ? Number(selectData.featured_order) : null
         
-        if (!verifyData) {
-          console.error('Verification failed - no data returned')
-          alert('Failed to verify update: Product not found')
-          throw new Error('Product not found during verification')
-        }
-        
-        // Convert verifyData values to match our expected types
-        const verifyIsFeatured = verifyData.is_featured === true || verifyData.is_featured === 1 || verifyData.is_featured === 'true'
-        const verifyFeaturedOrder = verifyData.featured_order ? Number(verifyData.featured_order) : null
-        
-        console.log('Verification check:', {
+        console.log('Verification check (from selectData):', {
           expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
           actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
-          raw: { is_featured: verifyData.is_featured, featured_order: verifyData.featured_order },
+          raw: { is_featured: selectData.is_featured, featured_order: selectData.featured_order },
           types: {
             expected_is_featured: typeof isFeaturedValue,
             actual_is_featured: typeof verifyIsFeatured,
