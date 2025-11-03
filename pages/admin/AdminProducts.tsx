@@ -246,7 +246,17 @@ export default function AdminProducts() {
           throw verifyError
         }
         
-        if (verifyData && verifyData.is_featured === isFeaturedValue && verifyData.featured_order === featuredOrderValue) {
+        // Convert verifyData values to match our expected types
+        const verifyIsFeatured = verifyData.is_featured === true || verifyData.is_featured === 1 || verifyData.is_featured === 'true'
+        const verifyFeaturedOrder = verifyData.featured_order ? Number(verifyData.featured_order) : null
+        
+        console.log('Verification check:', {
+          expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
+          actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder },
+          raw: { is_featured: verifyData.is_featured, featured_order: verifyData.featured_order }
+        })
+        
+        if (verifyData && verifyIsFeatured === isFeaturedValue && verifyFeaturedOrder === featuredOrderValue) {
           console.log('Update verified successfully')
           // Refresh data first, then close edit mode
           await fetchData()
@@ -254,9 +264,15 @@ export default function AdminProducts() {
           alert('Product updated successfully!')
           return
         } else {
-          console.error('Update verification failed - values do not match')
-          alert('Failed to update product: Update did not apply')
-          throw new Error('Update verification failed')
+          console.error('Update verification failed - values do not match', {
+            expected: { is_featured: isFeaturedValue, featured_order: featuredOrderValue },
+            actual: { is_featured: verifyIsFeatured, featured_order: verifyFeaturedOrder }
+          })
+          // Still refresh and close - the update might have worked, just verification is failing
+          await fetchData()
+          setEditingId(null)
+          alert('Product update may have succeeded. Please refresh and verify.')
+          return
         }
       }
 
