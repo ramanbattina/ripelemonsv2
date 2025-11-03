@@ -85,8 +85,11 @@ export default function AdminProducts() {
       }
 
       // Combine products with their revenue data
+      // Ensure is_featured is properly converted to boolean
       const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => ({
         ...product,
+        is_featured: product.is_featured === true || product.is_featured === 'true',
+        featured_order: product.featured_order,
         revenue: revenueByProduct[product.id] || null
       }))
 
