@@ -222,7 +222,6 @@ export default function AdminProducts() {
         alert('You must be logged in to update products')
         throw new Error('Not authenticated')
       }
-      console.log('Current user:', currentUser.id, currentUser.email)
 
       // Try update and check if rows were affected
       const { error: updateError, data: updateResult } = await supabase

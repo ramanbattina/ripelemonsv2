@@ -165,7 +165,9 @@ export default function ProductDetailPage() {
   }
 
   // Admin users have all premium features unlocked
-  const isPremiumUser = profile && (profile.subscription_status !== 'free' || profile.is_admin === true)
+  // Guest users viewing featured products can see everything (no premium locks)
+  const isGuestViewingFeatured = !user && product?.is_featured === true
+  const isPremiumUser = isGuestViewingFeatured || (profile && (profile.subscription_status !== 'free' || profile.is_admin === true))
 
   if (loading) {
     return (
@@ -314,8 +316,8 @@ export default function ProductDetailPage() {
         
         <div className="pt-24 pb-12 px-4">
           <div className="max-w-4xl mx-auto">
-            {/* View Counter for Free Users */}
-            {profile && profile.subscription_status === 'free' && (
+            {/* View Counter for Free Users (not for guests viewing featured) */}
+            {profile && profile.subscription_status === 'free' && !isGuestViewingFeatured && (
               <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertCircle size={16} />
@@ -496,18 +498,24 @@ export default function ProductDetailPage() {
             {/* CTA */}
             <div className="mt-8 bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-8 text-center text-white">
               <h3 className="text-2xl font-bold mb-2">
-                {isPremiumUser ? 'Enjoying Premium Access?' : 'Want to see more products like this?'}
+                {isGuestViewingFeatured 
+                  ? 'Want to see more products like this?' 
+                  : isPremiumUser 
+                    ? 'Enjoying Premium Access?' 
+                    : 'Want to see more products like this?'}
               </h3>
               <p className="text-green-100 mb-6">
-                {isPremiumUser 
-                  ? 'Explore more verified products with your premium membership'
-                  : 'Get premium access to advanced filters and detailed insights'}
+                {isGuestViewingFeatured
+                  ? 'Register for free to access all products and get 30-40 views per month'
+                  : isPremiumUser 
+                    ? 'Explore more verified products with your premium membership'
+                    : 'Get premium access to advanced filters and detailed insights'}
               </p>
               <Link
-                to={isPremiumUser ? '/' : '/pricing'}
+                to={isGuestViewingFeatured ? '/signup' : isPremiumUser ? '/' : '/pricing'}
                 className="inline-block px-8 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-green-50 transition-colors"
               >
-                {isPremiumUser ? 'Explore More Products' : 'View Pricing'}
+                {isGuestViewingFeatured ? 'Register for Free' : isPremiumUser ? 'Explore More Products' : 'View Pricing'}
               </Link>
             </div>
           </div>
