@@ -183,21 +183,27 @@ export default function AdminProducts() {
         slug = ensureUniqueSlug(slug, existingSlugs)
       }
 
+      // Ensure boolean values are properly sent to database
+      const updateData: any = {
+        name: product.name,
+        url: product.url,
+        founder_id: product.founder_id,
+        description: product.description,
+        category_id: product.category_id,
+        slug: slug,
+        is_featured: Boolean(product.is_featured),
+        featured_order: product.featured_order || null
+      }
+
       const { error } = await supabase
         .from('products')
-        .update({
-          name: product.name,
-          url: product.url,
-          founder_id: product.founder_id,
-          description: product.description,
-          category_id: product.category_id,
-          slug: slug,
-          is_featured: product.is_featured,
-          featured_order: product.featured_order
-        })
+        .update(updateData)
         .eq('id', id)
 
-      if (error) throw error
+      if (error) {
+        console.error('Update error:', error)
+        throw error
+      }
 
       setEditingId(null)
       fetchData()
