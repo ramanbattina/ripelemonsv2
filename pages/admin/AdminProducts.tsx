@@ -224,9 +224,8 @@ export default function AdminProducts() {
       }
       console.log('Current user:', currentUser.id, currentUser.email)
 
-      // Try update without select first to see if it works
-      // Use select() to get the number of rows affected
-      const { error: updateError, data: updateResult, count } = await supabase
+      // Try update and check if rows were affected
+      const { error: updateError, count } = await supabase
         .from('products')
         .update(updateData)
         .eq('id', id)
@@ -239,13 +238,15 @@ export default function AdminProducts() {
         throw updateError
       }
 
-      console.log('Update executed (no error), rows affected:', count, 'updateResult:', updateResult)
+      console.log('Update executed (no error), rows affected:', count)
       
       // If no rows were affected, the update didn't work
-      if (count === 0) {
+      if (count === 0 || count === null) {
         console.error('No rows were updated - check RLS policies or permissions')
-        alert('Update failed: No rows were updated. Please check your database permissions.')
-        throw new Error('No rows updated')
+        console.error('Update data sent:', updateData)
+        console.error('Product ID:', id)
+        alert('Update failed: No rows were updated. This is likely an RLS (Row Level Security) issue. Please check your Supabase RLS policies for the products table.')
+        throw new Error('No rows updated - RLS may be blocking the update')
       }
 
       // Wait a moment for the database to commit
