@@ -246,6 +246,12 @@ export default function AdminProducts() {
           throw verifyError
         }
         
+        if (!verifyData) {
+          console.error('Verification failed - no data returned')
+          alert('Failed to verify update: Product not found')
+          throw new Error('Product not found during verification')
+        }
+        
         // Convert verifyData values to match our expected types
         const verifyIsFeatured = verifyData.is_featured === true || verifyData.is_featured === 1 || verifyData.is_featured === 'true'
         const verifyFeaturedOrder = verifyData.featured_order ? Number(verifyData.featured_order) : null
@@ -256,7 +262,7 @@ export default function AdminProducts() {
           raw: { is_featured: verifyData.is_featured, featured_order: verifyData.featured_order }
         })
         
-        if (verifyData && verifyIsFeatured === isFeaturedValue && verifyFeaturedOrder === featuredOrderValue) {
+        if (verifyIsFeatured === isFeaturedValue && verifyFeaturedOrder === featuredOrderValue) {
           console.log('Update verified successfully')
           // Refresh data first, then close edit mode
           await fetchData()
