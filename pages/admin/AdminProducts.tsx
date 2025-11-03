@@ -200,7 +200,7 @@ export default function AdminProducts() {
 
       // Ensure boolean values are properly sent to database
       // Explicitly convert to boolean - handle edge cases
-      const isFeaturedValue = product.is_featured === true || product.is_featured === 1
+      const isFeaturedValue = Boolean(product.is_featured)
       const featuredOrderValue = product.featured_order && product.featured_order > 0 ? product.featured_order : null
       
       const updateData: any = {
