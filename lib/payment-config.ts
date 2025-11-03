@@ -153,8 +153,61 @@ export async function getActivePaymentProcessor(): Promise<PaymentProcessor | nu
   }
 }
 
+// View pack pricing structure
+export const VIEW_PACKS = {
+  pack_50: {
+    id: 'pack_50',
+    name: '50 Views',
+    views: 50,
+    price: 4.99,
+    popular: false
+  },
+  pack_100: {
+    id: 'pack_100',
+    name: '100 Views',
+    views: 100,
+    price: 8.99,
+    popular: true, // 10% discount vs buying 2x 50 packs
+    savings: '10%'
+  },
+  pack_250: {
+    id: 'pack_250',
+    name: '250 Views',
+    views: 250,
+    price: 19.99,
+    popular: false,
+    savings: '20%' // 20% discount vs buying 5x 50 packs
+  }
+} as const
+
+export type ViewPackId = keyof typeof VIEW_PACKS
+
 /**
- * Validate payment amount and tier
+ * Validate payment amount for view pack
+ */
+export function validateViewPackPayment(packId: string, amount: number): { valid: boolean; message?: string } {
+  const pack = VIEW_PACKS[packId as ViewPackId]
+  
+  if (!pack) {
+    return { valid: false, message: 'Invalid view pack' }
+  }
+  
+  if (amount !== pack.price) {
+    return { valid: false, message: `Expected amount ${pack.price}, got ${amount}` }
+  }
+  
+  return { valid: true }
+}
+
+/**
+ * Get view pack details
+ */
+export function getViewPack(packId: string) {
+  return VIEW_PACKS[packId as ViewPackId] || null
+}
+
+/**
+ * Validate payment amount and tier (legacy - for backward compatibility)
  */
 export function validatePayment(tier: string, amount: number): { valid: boolean; message?: string } {
   const pricing = {

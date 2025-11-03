@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, RevenueData } from '../../lib/supabase'
-import { Plus, Edit, Trash2, ArrowLeft, Save, X, DollarSign } from 'lucide-react'
+import { Plus, Edit, Trash2, ArrowLeft, Save, X, DollarSign, Star } from 'lucide-react'
+import { generateSlug, ensureUniqueSlug } from '../../lib/utils'
 
 interface Product {
   id: number
@@ -11,6 +12,9 @@ interface Product {
   description: string | null
   category_id: number
   date_added: string
+  slug: string | null
+  is_featured: boolean
+  featured_order: number | null
 }
 
 interface ProductWithRevenue extends Product {
@@ -30,7 +34,10 @@ export default function AdminProducts() {
     url: '',
     founder_id: '',
     description: '',
-    category_id: ''
+    category_id: '',
+    slug: '',
+    is_featured: false,
+    featured_order: null as number | null
   })
   const [revenueFormData, setRevenueFormData] = useState({
     mrr: '',
@@ -96,19 +103,46 @@ export default function AdminProducts() {
 
   async function handleAdd() {
     try {
+      // Check featured limit
+      if (formData.is_featured) {
+        const { count: featuredCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_featured', true)
+        
+        if (featuredCount && featuredCount >= 10) {
+          alert('Maximum 10 featured products allowed. Please unfeature another product first.')
+          return
+        }
+      }
+
+      // Generate slug if not provided
+      let slug = formData.slug || generateSlug(formData.name)
+      
+      // Ensure slug uniqueness
+      const { data: existingProducts } = await supabase
+        .from('products')
+        .select('slug')
+      
+      const existingSlugs = existingProducts?.map(p => p.slug).filter(Boolean) || []
+      slug = ensureUniqueSlug(slug, existingSlugs)
+
       const { error } = await supabase.from('products').insert({
         name: formData.name,
         url: formData.url || null,
         founder_id: parseInt(formData.founder_id),
         description: formData.description || null,
         category_id: parseInt(formData.category_id),
+        slug: slug,
+        is_featured: formData.is_featured,
+        featured_order: formData.featured_order || null,
         date_added: new Date().toISOString()
       })
 
       if (error) throw error
 
       setShowAddForm(false)
-      setFormData({ name: '', url: '', founder_id: '', description: '', category_id: '' })
+      setFormData({ name: '', url: '', founder_id: '', description: '', category_id: '', slug: '', is_featured: false, featured_order: null })
       fetchData()
       alert('Product added successfully!')
     } catch (error) {
@@ -122,6 +156,30 @@ export default function AdminProducts() {
       const product = products.find(p => p.id === id)
       if (!product) return
 
+      // Check featured limit if making product featured
+      if (product.is_featured && !products.find(p => p.id === id)?.is_featured) {
+        const { count: featuredCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_featured', true)
+        
+        if (featuredCount && featuredCount >= 10) {
+          alert('Maximum 10 featured products allowed. Please unfeature another product first.')
+          return
+        }
+      }
+
+      // Generate slug if empty
+      let slug = product.slug || generateSlug(product.name)
+      if (!product.slug) {
+        const { data: existingProducts } = await supabase
+          .from('products')
+          .select('slug')
+        
+        const existingSlugs = existingProducts?.map(p => p.slug).filter(Boolean) || []
+        slug = ensureUniqueSlug(slug, existingSlugs)
+      }
+
       const { error } = await supabase
         .from('products')
         .update({
@@ -129,13 +187,17 @@ export default function AdminProducts() {
           url: product.url,
           founder_id: product.founder_id,
           description: product.description,
-          category_id: product.category_id
+          category_id: product.category_id,
+          slug: slug,
+          is_featured: product.is_featured,
+          featured_order: product.featured_order
         })
         .eq('id', id)
 
       if (error) throw error
 
       setEditingId(null)
+      fetchData()
       alert('Product updated successfully!')
     } catch (error) {
       console.error('Error updating product:', error)
@@ -160,7 +222,17 @@ export default function AdminProducts() {
   }
 
   function updateProduct(id: number, field: string, value: any) {
-    setProducts(products.map(p => p.id === id ? { ...p, [field]: value } : p))
+    setProducts(products.map(p => {
+      if (p.id === id) {
+        const updated = { ...p, [field]: value }
+        // Auto-generate slug if name changes and slug is empty
+        if (field === 'name' && !updated.slug) {
+          updated.slug = generateSlug(updated.name)
+        }
+        return updated
+      }
+      return p
+    }))
   }
 
   async function handleRevenueUpdate(productId: number) {
@@ -298,6 +370,41 @@ export default function AdminProducts() {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 md:col-span-2"
                 rows={2}
               />
+              <input
+                type="text"
+                placeholder="Slug (auto-generated if empty)"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                onBlur={(e) => {
+                  if (!e.target.value && formData.name) {
+                    setFormData({ ...formData, slug: generateSlug(formData.name) })
+                  }
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              />
+              <div className="flex items-center gap-4 md:col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_featured}
+                    onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Featured Product</span>
+                  <Star size={16} className={formData.is_featured ? 'text-yellow-500' : 'text-gray-400'} />
+                </label>
+                {formData.is_featured && (
+                  <input
+                    type="number"
+                    placeholder="Featured Order (1-10)"
+                    min="1"
+                    max="10"
+                    value={formData.featured_order || ''}
+                    onChange={(e) => setFormData({ ...formData, featured_order: e.target.value ? parseInt(e.target.value) : null })}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 w-32"
+                  />
+                )}
+              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button
@@ -324,11 +431,12 @@ export default function AdminProducts() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Founder</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">MRR</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ARR</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Featured</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -345,6 +453,19 @@ export default function AdminProducts() {
                         />
                       ) : (
                         <span className="font-medium text-gray-900">{product.name}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {editingId === product.id ? (
+                        <input
+                          type="text"
+                          value={product.slug || ''}
+                          onChange={(e) => updateProduct(product.id, 'slug', e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                          placeholder="slug-revenue"
+                        />
+                      ) : (
+                        <span className="text-gray-600 text-xs font-mono">{product.slug || 'No slug'}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
@@ -383,11 +504,35 @@ export default function AdminProducts() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      {product.url && (
-                        <a href={product.url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700">
-                          Visit
-                        </a>
+                    <td className="px-4 py-3 text-center">
+                      {editingId === product.id ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={product.is_featured || false}
+                            onChange={(e) => updateProduct(product.id, 'is_featured', e.target.checked)}
+                            className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                          />
+                          {product.is_featured && (
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={product.featured_order || ''}
+                              onChange={(e) => updateProduct(product.id, 'featured_order', e.target.value ? parseInt(e.target.value) : null)}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                              placeholder="Order"
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          {product.is_featured ? (
+                            <Star className="text-yellow-500" size={20} title={`Featured #${product.featured_order || ''}`} />
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

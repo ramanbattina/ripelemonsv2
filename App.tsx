@@ -22,7 +22,7 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/product/:slug" element={<ProductDetailPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/submit" element={<SubmitProductPage />} />
           <Route path="/success" element={<PaymentSuccessPage />} />

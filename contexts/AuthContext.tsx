@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 full_name: null,
                 subscription_status: 'free',
                 monthly_view_count: 0,
-                monthly_view_limit: 10,
+                monthly_view_limit: 35,
                 is_admin: false  // Default to false - must be set manually for admin users
               })
               .select()
@@ -234,7 +234,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Admin users have unlimited access
     if (profile.is_admin === true) return true
     if (profile.subscription_status !== 'free') return true
-    return profile.monthly_view_count < profile.monthly_view_limit
+    
+    // Check monthly view limit
+    const monthlyRemaining = profile.monthly_view_count < profile.monthly_view_limit
+    
+    // Check purchased view packs
+    if (user) {
+      const { data: viewPacks } = await supabase
+        .from('view_packs')
+        .select('views_remaining')
+        .eq('user_id', user.id)
+        .gt('views_remaining', 0)
+      
+      const hasPurchasedViews = viewPacks && viewPacks.length > 0 && 
+        viewPacks.reduce((sum, pack) => sum + pack.views_remaining, 0) > 0
+      
+      return monthlyRemaining || hasPurchasedViews
+    }
+    
+    return monthlyRemaining
   }
 
   async function incrementViewCount() {
@@ -243,10 +261,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile.is_admin === true) return
     if (profile.subscription_status !== 'free') return
 
-    await supabase
-      .from('user_profiles')
-      .update({ monthly_view_count: profile.monthly_view_count + 1 })
-      .eq('id', user.id)
+    // Check if user has purchased views first
+    const { data: viewPacks } = await supabase
+      .from('view_packs')
+      .select('id, views_remaining')
+      .eq('user_id', user.id)
+      .gt('views_remaining', 0)
+      .order('purchased_at', { ascending: true })
+      .limit(1)
+
+    if (viewPacks && viewPacks.length > 0 && viewPacks[0].views_remaining > 0) {
+      // Use purchased view first
+      await supabase
+        .from('view_packs')
+        .update({ views_remaining: viewPacks[0].views_remaining - 1 })
+        .eq('id', viewPacks[0].id)
+    } else {
+      // Use monthly view count
+      await supabase
+        .from('user_profiles')
+        .update({ monthly_view_count: profile.monthly_view_count + 1 })
+        .eq('id', user.id)
+    }
 
     await fetchProfile(user.id)
   }

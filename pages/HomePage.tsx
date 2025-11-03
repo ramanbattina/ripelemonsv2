@@ -4,8 +4,10 @@ import { supabase, ProductWithDetails } from '../lib/supabase'
 import { Search,  Filter, X } from 'lucide-react'
 import Navigation from '../components/Navigation'
 import ProductCard from '../components/ProductCard'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function HomePage() {
+  const { user } = useAuth()
   const [products, setProducts] = useState<ProductWithDetails[]>([])
   const [filteredProducts, setFilteredProducts] = useState<ProductWithDetails[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -17,7 +19,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [user])
 
   useEffect(() => {
     filterProducts()
@@ -68,7 +70,16 @@ export default function HomePage() {
         }
       })
 
-      setProducts(productsWithDetails)
+      // Filter products based on user status
+      // Guests only see featured products, logged-in users see all
+      const displayProducts = user 
+        ? productsWithDetails 
+        : productsWithDetails
+          .filter(p => p.is_featured === true)
+          .sort((a, b) => (a.featured_order || 0) - (b.featured_order || 0))
+          .slice(0, 10)
+
+      setProducts(displayProducts)
       setCategories(categoriesRes.data || [])
     } catch (error) {
       console.error('Error fetching data:', error)

@@ -47,7 +47,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <Link to={`/product/${product.id}`}>
+    <Link to={`/product/${product.slug || product.id}`}>
       <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-100 hover:border-green-200 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">

@@ -14,6 +14,9 @@ export interface Product {
   category_id: number
   logo_url: string | null
   date_added: string
+  slug: string | null
+  is_featured: boolean
+  featured_order: number | null
 }
 
 export interface Founder {
@@ -52,4 +55,16 @@ export interface ProductWithDetails extends Product {
   revenue?: RevenueData
   category?: Category
   verification_tier?: VerificationTier
+}
+
+export interface ViewPack {
+  id: number
+  user_id: string
+  views_purchased: number
+  views_remaining: number
+  purchased_at: string
+  price_paid: number
+  payment_processor: string | null
+  payment_id: string | null
+  created_at: string
 }

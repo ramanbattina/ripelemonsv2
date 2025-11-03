@@ -6,24 +6,45 @@ import { DollarSign, TrendingUp, ExternalLink, Award, User, Calendar, ArrowLeft,
 import { useAuth } from '../contexts/AuthContext'
 
 export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { user, profile, checkViewLimit, incrementViewCount } = useAuth()
   const [product, setProduct] = useState<ProductWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [viewLimitReached, setViewLimitReached] = useState(false)
+  const [showGuestUpgrade, setShowGuestUpgrade] = useState(false)
 
   useEffect(() => {
-    if (id) {
-      checkAndFetchProduct(parseInt(id))
+    if (slug) {
+      checkAndFetchProduct(slug)
     }
-  }, [id, user, profile])
+  }, [slug, user, profile])
 
-  async function checkAndFetchProduct(productId: number) {
+  async function checkAndFetchProduct(productSlug: string) {
     try {
+      // Fetch product first to check if it's featured (for guest access)
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('slug', productSlug)
+        .maybeSingle()
+
+      if (productError) throw productError
+      if (!productData) {
+        navigate('/')
+        return
+      }
+
+      // Guest users can only access featured products
+      if (!user && !productData.is_featured) {
+        setShowGuestUpgrade(true)
+        setLoading(false)
+        return
+      }
+
       // Admin users bypass all view limits and payment walls
       if (profile && profile.is_admin === true) {
-        await fetchProduct(productId)
+        await fetchProduct(productSlug)
         return
       }
 
@@ -39,19 +60,19 @@ export default function ProductDetailPage() {
         await incrementViewCount()
       }
 
-      await fetchProduct(productId)
+      await fetchProduct(productSlug)
     } catch (error) {
       console.error('Error checking view limit:', error)
-      await fetchProduct(productId)
+      await fetchProduct(productSlug)
     }
   }
 
-  async function fetchProduct(productId: number) {
+  async function fetchProduct(productSlug: string) {
     try {
       const { data: productData, error: productError } = await supabase
         .from('products')
         .select('*')
-        .eq('id', productId)
+        .eq('slug', productSlug)
         .maybeSingle()
 
       if (productError) throw productError
@@ -62,7 +83,7 @@ export default function ProductDetailPage() {
 
       const [founderRes, revenueRes, categoryRes] = await Promise.all([
         supabase.from('founders').select('*').eq('id', productData.founder_id).maybeSingle(),
-        supabase.from('revenue_data').select('*').eq('product_id', productId),
+        supabase.from('revenue_data').select('*').eq('product_id', productData.id),
         supabase.from('categories').select('*').eq('id', productData.category_id).maybeSingle()
       ])
 
@@ -160,6 +181,68 @@ export default function ProductDetailPage() {
     )
   }
 
+  // Guest upgrade prompt
+  if (showGuestUpgrade) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="pt-24 pb-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-xl p-8 shadow-lg text-center">
+              <div className="mb-6">
+                <Lock className="text-amber-500 mx-auto" size={64} />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                This Product Is Not Available for Guests
+              </h1>
+              <p className="text-lg text-gray-600 mb-6">
+                Guest users can only view featured products. Register for free to access all products and get 30-40 views per month.
+              </p>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Free Registration Includes:</h3>
+                <ul className="text-left text-gray-700 space-y-2">
+                  <li className="flex items-center gap-2">
+                    <Lock size={16} className="text-green-600" />
+                    30-40 product views per month
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Lock size={16} className="text-green-600" />
+                    Access to all products
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Lock size={16} className="text-green-600" />
+                    Advanced filters and search
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Lock size={16} className="text-green-600" />
+                    Founder profiles and revenue data
+                  </li>
+                </ul>
+              </div>
+              <div className="flex gap-4 justify-center">
+                <Link
+                  to="/signup"
+                  className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Register for Free
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg border-2 border-gray-300 hover:border-green-600 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </div>
+              <p className="mt-4 text-sm text-gray-500">
+                Already have an account? <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">Sign in here</Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // View limit reached for free users
   if (viewLimitReached) {
     return (
@@ -175,27 +258,27 @@ export default function ProductDetailPage() {
                 Monthly View Limit Reached
               </h1>
               <p className="text-lg text-gray-600 mb-6">
-                You've reached your limit of {profile?.monthly_view_limit} product views this month as a free user.
-                Upgrade to Premium for unlimited access!
+                You've reached your limit of 30-40 product views this month as a free user.
+                Buy a view pack to continue browsing!
               </p>
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 mb-6">
-                <h3 className="font-semibold text-gray-900 mb-3">Premium Benefits:</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">Buy View Packs:</h3>
                 <ul className="text-left text-gray-700 space-y-2">
                   <li className="flex items-center gap-2">
                     <Lock size={16} className="text-green-600" />
-                    Unlimited product views
+                    50 views - $4.99
                   </li>
                   <li className="flex items-center gap-2">
                     <Lock size={16} className="text-green-600" />
-                    Advanced filters and search
+                    100 views - $8.99 (Save 10%)
                   </li>
                   <li className="flex items-center gap-2">
                     <Lock size={16} className="text-green-600" />
-                    Detailed founder profiles
+                    250 views - $19.99 (Save 20%)
                   </li>
                   <li className="flex items-center gap-2">
                     <Lock size={16} className="text-green-600" />
-                    API access for data export
+                    Views never expire
                   </li>
                 </ul>
               </div>
@@ -204,7 +287,7 @@ export default function ProductDetailPage() {
                   to="/pricing"
                   className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  Upgrade to Premium
+                  Buy View Pack
                 </Link>
                 <Link
                   to="/"
