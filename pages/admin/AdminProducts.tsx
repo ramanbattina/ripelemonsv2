@@ -88,8 +88,8 @@ export default function AdminProducts() {
       // Ensure is_featured is properly converted to boolean
       const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => ({
         ...product,
-        is_featured: product.is_featured === true || product.is_featured === 'true',
-        featured_order: product.featured_order,
+        is_featured: product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1,
+        featured_order: product.featured_order !== null ? Number(product.featured_order) : null,
         revenue: revenueByProduct[product.id] || null
       }))
 
@@ -160,7 +160,8 @@ export default function AdminProducts() {
       if (!product) return
 
       // Check featured limit if making product featured
-      if (product.is_featured && !products.find(p => p.id === id)?.is_featured) {
+      const originalProduct = products.find(p => p.id === id)
+      if (product.is_featured && !originalProduct?.is_featured) {
         const { count: featuredCount } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
@@ -168,6 +169,8 @@ export default function AdminProducts() {
         
         if (featuredCount && featuredCount >= 10) {
           alert('Maximum 10 featured products allowed. Please unfeature another product first.')
+          // Revert the checkbox state
+          updateProduct(id, 'is_featured', false)
           return
         }
       }
@@ -205,8 +208,9 @@ export default function AdminProducts() {
         throw error
       }
 
+      // Refresh data first, then close edit mode
+      await fetchData()
       setEditingId(null)
-      fetchData()
       alert('Product updated successfully!')
     } catch (error) {
       console.error('Error updating product:', error)
