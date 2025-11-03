@@ -10,14 +10,17 @@
 export function generateSlug(name: string): string {
   if (!name) return 'product-revenue'
   
-  return name
+  let slug = name
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single
-    .slice(0, 100) // Limit length
-    + '-revenue'
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+  
+  // Ensure it doesn't start or end with a dash after adding revenue
+  if (!slug) slug = 'product'
+  
+  return slug + '-revenue'
 }
 
 /**

@@ -34,8 +34,26 @@ CREATE INDEX IF NOT EXISTS idx_view_packs_user_active ON view_packs(user_id, vie
 
 -- Generate slugs for existing products
 -- This creates slugs like "product-name-revenue"
+-- Step 1: Convert to lowercase
+-- Step 2: Replace non-alphanumeric with single dashes
+-- Step 3: Remove leading/trailing dashes and collapse multiple dashes
 UPDATE products 
-SET slug = LOWER(REGEXP_REPLACE(name, '[^a-z0-9]+', '-', 'g')) || '-revenue'
+SET slug = REGEXP_REPLACE(
+  REGEXP_REPLACE(
+    REGEXP_REPLACE(
+      LOWER(TRIM(name)),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    ),
+    '-+',
+    '-',
+    'g'
+  ),
+  '^-|-$',
+  '',
+  'g'
+) || '-revenue'
 WHERE slug IS NULL OR slug = '';
 
 -- Handle duplicate slugs by adding a number suffix
