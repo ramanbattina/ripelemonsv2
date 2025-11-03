@@ -214,7 +214,7 @@ export default function AdminProducts() {
         featured_order: featuredOrderValue
       }
 
-      console.log('Updating product:', id, 'is_featured:', isFeaturedValue, 'featured_order:', featuredOrderValue)
+      console.log('Updating product:', id, 'updateData:', updateData)
 
       const { error, data } = await supabase
         .from('products')
@@ -224,7 +224,15 @@ export default function AdminProducts() {
 
       if (error) {
         console.error('Update error:', error)
+        console.error('Error details:', JSON.stringify(error, null, 2))
+        alert(`Failed to update product: ${error.message}`)
         throw error
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No data returned from update')
+        alert('Failed to update product: No data returned')
+        throw new Error('No data returned from update')
       }
 
       console.log('Update result:', data)
