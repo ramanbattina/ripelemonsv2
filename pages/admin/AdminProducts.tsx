@@ -225,12 +225,11 @@ export default function AdminProducts() {
       console.log('Current user:', currentUser.id, currentUser.email)
 
       // Try update and check if rows were affected
-      const { error: updateError, count } = await supabase
+      const { error: updateError, data: updateResult } = await supabase
         .from('products')
         .update(updateData)
         .eq('id', id)
-        .select('id', { count: 'exact' })
-        .limit(1)
+        .select('id')
 
       if (updateError) {
         console.error('Update error:', updateError)
@@ -239,10 +238,10 @@ export default function AdminProducts() {
         throw updateError
       }
 
-      console.log('Update executed (no error), rows affected:', count)
+      console.log('Update executed (no error), result:', updateResult)
       
-      // If no rows were affected, the update didn't work
-      if (count === 0 || count === null) {
+      // If no data returned, the update didn't work (likely RLS blocking)
+      if (!updateResult || updateResult.length === 0) {
         console.error('No rows were updated - check RLS policies or permissions')
         console.error('Update data sent:', updateData)
         console.error('Product ID:', id)
