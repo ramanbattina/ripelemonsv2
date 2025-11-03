@@ -88,10 +88,12 @@ export default function AdminProducts() {
       // Ensure is_featured is properly converted to boolean
       const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => {
         // Robust boolean conversion - handle all possible formats from database
+        // Type assertion to handle any type that might come from Supabase
+        const isFeaturedRaw = product.is_featured as any
         let isFeatured = false
-        if (product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1 || product.is_featured === '1') {
+        if (isFeaturedRaw === true || isFeaturedRaw === 1 || isFeaturedRaw === 'true' || isFeaturedRaw === '1') {
           isFeatured = true
-        } else if (product.is_featured === false || product.is_featured === 'false' || product.is_featured === 0 || product.is_featured === '0' || product.is_featured === null) {
+        } else if (isFeaturedRaw === false || isFeaturedRaw === 0 || isFeaturedRaw === 'false' || isFeaturedRaw === '0' || isFeaturedRaw === null || isFeaturedRaw === undefined) {
           isFeatured = false
         }
         
@@ -198,7 +200,7 @@ export default function AdminProducts() {
 
       // Ensure boolean values are properly sent to database
       // Explicitly convert to boolean - handle edge cases
-      const isFeaturedValue = product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1
+      const isFeaturedValue = product.is_featured === true || product.is_featured === 1
       const featuredOrderValue = product.featured_order && product.featured_order > 0 ? product.featured_order : null
       
       const updateData: any = {
