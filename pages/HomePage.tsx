@@ -76,13 +76,16 @@ export default function HomePage() {
         }
       })
 
-      // For guests, sort by featured_order; for logged-in users, keep original order
+      // For guests, ensure products are sorted by featured_order (nulls last)
+      // For logged-in users, keep original order
       const displayProducts = user 
         ? productsWithDetails 
         : productsWithDetails.sort((a, b) => {
-            const orderA = a.featured_order ?? 999
-            const orderB = b.featured_order ?? 999
-            return orderA - orderB
+            // Sort by featured_order, nulls go to the end
+            if (a.featured_order === null && b.featured_order === null) return 0
+            if (a.featured_order === null) return 1
+            if (b.featured_order === null) return -1
+            return a.featured_order - b.featured_order
           })
 
       setProducts(displayProducts)
