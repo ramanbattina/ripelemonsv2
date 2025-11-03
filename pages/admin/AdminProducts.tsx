@@ -86,12 +86,22 @@ export default function AdminProducts() {
 
       // Combine products with their revenue data
       // Ensure is_featured is properly converted to boolean
-      const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => ({
-        ...product,
-        is_featured: product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1,
-        featured_order: product.featured_order !== null ? Number(product.featured_order) : null,
-        revenue: revenueByProduct[product.id] || null
-      }))
+      const productsWithRevenue: ProductWithRevenue[] = productsData.map(product => {
+        // Robust boolean conversion - handle all possible formats from database
+        let isFeatured = false
+        if (product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1 || product.is_featured === '1') {
+          isFeatured = true
+        } else if (product.is_featured === false || product.is_featured === 'false' || product.is_featured === 0 || product.is_featured === '0' || product.is_featured === null) {
+          isFeatured = false
+        }
+        
+        return {
+          ...product,
+          is_featured: isFeatured,
+          featured_order: product.featured_order !== null && product.featured_order !== undefined ? Number(product.featured_order) : null,
+          revenue: revenueByProduct[product.id] || null
+        }
+      })
 
       setProducts(productsWithRevenue)
       if (foundersRes.data) setFounders(foundersRes.data)
@@ -187,6 +197,10 @@ export default function AdminProducts() {
       }
 
       // Ensure boolean values are properly sent to database
+      // Explicitly convert to boolean - handle edge cases
+      const isFeaturedValue = product.is_featured === true || product.is_featured === 'true' || product.is_featured === 1
+      const featuredOrderValue = product.featured_order && product.featured_order > 0 ? product.featured_order : null
+      
       const updateData: any = {
         name: product.name,
         url: product.url,
@@ -194,19 +208,24 @@ export default function AdminProducts() {
         description: product.description,
         category_id: product.category_id,
         slug: slug,
-        is_featured: Boolean(product.is_featured),
-        featured_order: product.featured_order || null
+        is_featured: isFeaturedValue,
+        featured_order: featuredOrderValue
       }
 
-      const { error } = await supabase
+      console.log('Updating product:', id, 'is_featured:', isFeaturedValue, 'featured_order:', featuredOrderValue)
+
+      const { error, data } = await supabase
         .from('products')
         .update(updateData)
         .eq('id', id)
+        .select()
 
       if (error) {
         console.error('Update error:', error)
         throw error
       }
+
+      console.log('Update result:', data)
 
       // Refresh data first, then close edit mode
       await fetchData()
