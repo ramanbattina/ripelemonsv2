@@ -229,7 +229,8 @@ export default function AdminProducts() {
         .from('products')
         .update(updateData)
         .eq('id', id)
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'exact' })
+        .limit(1)
 
       if (updateError) {
         console.error('Update error:', updateError)
@@ -405,8 +406,6 @@ export default function AdminProducts() {
           return
         }
       }
-
-      console.log('Update result:', data)
 
       // Refresh data first, then close edit mode
       await fetchData()
