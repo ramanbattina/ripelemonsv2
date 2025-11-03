@@ -229,10 +229,35 @@ export default function AdminProducts() {
         throw error
       }
 
+      // Note: If RLS prevents SELECT after UPDATE, data might be empty
+      // but the update may still have succeeded
       if (!data || data.length === 0) {
-        console.error('No data returned from update')
-        alert('Failed to update product: No data returned')
-        throw new Error('No data returned from update')
+        console.warn('No data returned from update (might be RLS) - verifying update...')
+        // Try to verify the update by fetching the product
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('products')
+          .select('id, is_featured, featured_order')
+          .eq('id', id)
+          .maybeSingle()
+        
+        if (verifyError) {
+          console.error('Verify error:', verifyError)
+          alert(`Failed to verify update: ${verifyError.message}`)
+          throw verifyError
+        }
+        
+        if (verifyData && verifyData.is_featured === isFeaturedValue && verifyData.featured_order === featuredOrderValue) {
+          console.log('Update verified successfully')
+          // Refresh data first, then close edit mode
+          await fetchData()
+          setEditingId(null)
+          alert('Product updated successfully!')
+          return
+        } else {
+          console.error('Update verification failed - values do not match')
+          alert('Failed to update product: Update did not apply')
+          throw new Error('Update verification failed')
+        }
       }
 
       console.log('Update result:', data)
