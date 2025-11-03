@@ -27,9 +27,15 @@ export default function HomePage() {
 
   async function fetchData() {
     try {
-      // Fetch all data in parallel
+      // Fetch products based on user status
+      // Guests: only fetch featured products
+      // Logged-in users: fetch all products
+      const productsQuery = user 
+        ? supabase.from('products').select('*').order('date_added', { ascending: false })
+        : supabase.from('products').select('*').eq('is_featured', true).order('featured_order', { ascending: true }).limit(10)
+
       const [productsRes, categoriesRes] = await Promise.all([
-        supabase.from('products').select('*').order('date_added', { ascending: false }),
+        productsQuery,
         supabase.from('categories').select('*')
       ])
 
@@ -70,14 +76,14 @@ export default function HomePage() {
         }
       })
 
-      // Filter products based on user status
-      // Guests only see featured products, logged-in users see all
+      // For guests, sort by featured_order; for logged-in users, keep original order
       const displayProducts = user 
         ? productsWithDetails 
-        : productsWithDetails
-          .filter(p => p.is_featured === true)
-          .sort((a, b) => (a.featured_order || 0) - (b.featured_order || 0))
-          .slice(0, 10)
+        : productsWithDetails.sort((a, b) => {
+            const orderA = a.featured_order ?? 999
+            const orderB = b.featured_order ?? 999
+            return orderA - orderB
+          })
 
       setProducts(displayProducts)
       setCategories(categoriesRes.data || [])
