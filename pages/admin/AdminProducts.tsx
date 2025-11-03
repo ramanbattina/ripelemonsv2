@@ -215,30 +215,60 @@ export default function AdminProducts() {
       }
 
       console.log('Updating product:', id, 'updateData:', updateData)
+      
+      // Check if user is authenticated
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (!currentUser) {
+        alert('You must be logged in to update products')
+        throw new Error('Not authenticated')
+      }
+      console.log('Current user:', currentUser.id, currentUser.email)
 
-      const { error, data } = await supabase
+      // Try update without select first to see if it works
+      const { error: updateError, data: updateResult } = await supabase
         .from('products')
         .update(updateData)
         .eq('id', id)
-        .select()
 
-      if (error) {
-        console.error('Update error:', error)
-        console.error('Error details:', JSON.stringify(error, null, 2))
-        alert(`Failed to update product: ${error.message}`)
-        throw error
+      if (updateError) {
+        console.error('Update error:', updateError)
+        console.error('Error details:', JSON.stringify(updateError, null, 2))
+        alert(`Failed to update product: ${updateError.message}`)
+        throw updateError
+      }
+
+      console.log('Update executed (no error), checking if rows were affected:', updateResult)
+
+      // Now try to fetch the updated data separately
+      const { error: selectError, data: selectData } = await supabase
+        .from('products')
+        .select('id, is_featured, featured_order')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (selectError) {
+        console.error('Select error after update:', selectError)
       }
 
       // Note: If RLS prevents SELECT after UPDATE, data might be empty
       // but the update may still have succeeded
-      if (!data || data.length === 0) {
-        console.warn('No data returned from update (might be RLS) - verifying update...')
-        // Try to verify the update by fetching the product
-        const { data: verifyData, error: verifyError } = await supabase
-          .from('products')
-          .select('id, is_featured, featured_order')
-          .eq('id', id)
-          .maybeSingle()
+      if (!selectData) {
+        console.warn('No data returned from select after update (might be RLS) - verifying update...')
+        // Try to verify the update by fetching the product again
+        // Use the data we already fetched if available
+        let verifyData = selectData
+        let verifyError = selectError
+        
+        // If we didn't get data from the first select, try again
+        if (!verifyData) {
+          const { data: retryData, error: retryError } = await supabase
+            .from('products')
+            .select('id, is_featured, featured_order')
+            .eq('id', id)
+            .maybeSingle()
+          verifyData = retryData
+          verifyError = retryError
+        }
         
         if (verifyError) {
           console.error('Verify error:', verifyError)
