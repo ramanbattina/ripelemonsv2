@@ -528,7 +528,9 @@ export default function AdminProducts() {
                       ) : (
                         <div className="flex items-center justify-center">
                           {product.is_featured ? (
-                            <Star className="text-yellow-500" size={20} title={`Featured #${product.featured_order || ''}`} />
+                            <div title={`Featured #${product.featured_order || ''}`}>
+                              <Star className="text-yellow-500" size={20} />
+                            </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}

@@ -246,8 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id)
         .gt('views_remaining', 0)
       
-      const hasPurchasedViews = viewPacks && viewPacks.length > 0 && 
-        viewPacks.reduce((sum, pack) => sum + pack.views_remaining, 0) > 0
+      const hasPurchasedViews = !!(viewPacks && viewPacks.length > 0 && 
+        viewPacks.reduce((sum, pack) => sum + pack.views_remaining, 0) > 0)
       
       return monthlyRemaining || hasPurchasedViews
     }

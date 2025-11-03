@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import { Check, CreditCard, Loader, DollarSign } from 'lucide-react'
+import { Check, CreditCard, Loader } from 'lucide-react'
 import { VIEW_PACKS, getViewPack, type ViewPackId } from '../lib/payment-config'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -9,7 +9,7 @@ export default function PricingPage() {
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentPack, setCurrentPack] = useState<ViewPackId | null>(null)
-  const [paymentProcessor, setPaymentProcessor] = useState<string>('stripe')
+  const [paymentProcessor] = useState<string>('stripe')
 
   async function handlePurchasePack(packId: ViewPackId) {
     setIsProcessing(true)
@@ -171,7 +171,7 @@ export default function PricingPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <span className="font-semibold text-gray-900">{pack.name}</span>
-                        {pack.savings && (
+                        {'savings' in pack && pack.savings && (
                           <span className="ml-2 px-2 py-0.5 bg-green-600 text-white text-xs font-semibold rounded">
                             Save {pack.savings}
                           </span>
